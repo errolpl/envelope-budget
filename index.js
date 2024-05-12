@@ -24,20 +24,52 @@ let envelopes = [
 
 let totalBudget = 0;
 
+//Helper fuctions
+const getElementById = (id, elementList) => {
+  return elementList.find((element) => {
+    return element.id === Number(id);
+  });
+};
+
+const getIndexById = (id, elementList) => {
+  return elementList.findIndex((element) => {
+    return element.id === Number(id);
+  });
+};
+
+const updateElement = (id, queryArguments, elementList) => {
+  const elementIndex = getIndexById(id, elementList);
+  if (elementIndex === -1) {
+    throw new Error("updateElement must be called with a valid id parameter");
+  }
+  if (queryArguments.id) {
+    queryArguments.id = Number(queryArguments.id);
+  }
+  Object.assign(elementList[elementIndex], queryArguments);
+  return elementList[elementIndex];
+};
+
+//Sever routes
+app.use("/envelopes/:id", (req, res, next) => {
+  const foundId = envelopes.filter(
+    (envelope) => envelope.id === Number(req.params.id)
+  );
+  console.log(foundId[0]);
+  if (foundId.length > 0) {
+    req.body = foundId[0];
+    console.log(`Found Id: ${req.body.id}`);
+    next();
+  } else {
+    res.status(404).send("Envelope not found");
+  }
+});
+
 app.get("/", (req, res, next) => {
   res.send(envelopes);
 });
 
 app.get("/envelopes/:id", (req, res, next) => {
-  const foundId = envelopes.filter(
-    (envelope) => envelope.id === Number(req.params.id)
-  );
-  console.log(foundId);
-  if (foundId.length > 0) {
-    res.send(foundId);
-  } else {
-    res.status(404).send("Envelope not found");
-  }
+  res.send(req.body);
 });
 
 app.post("/envelopes", (req, res, next) => {
@@ -53,6 +85,27 @@ app.post("/envelopes", (req, res, next) => {
     res.send(newEnvelope);
   } else {
     res.status(400).send();
+  }
+});
+
+app.put("/envelopes/:id", (req, res, next) => {
+  const index = getIndexById(req.params.id, envelopes);
+
+  if (index !== -1) {
+    updateElement(req.params.id, req.query, envelopes);
+    res.send(envelopes[index]);
+  } else {
+    res.status(404).send();
+  }
+});
+
+app.delete("/envelopes/:id", (req, res, next) => {
+  const index = getIndexById(req.params.id, envelopes);
+  if (index !== -1) {
+    envelopes.splice(index, 1);
+    res.status(204).send();
+  } else {
+    res.status(404).send();
   }
 });
 
