@@ -49,6 +49,26 @@ const updateElement = (id, queryArguments, elementList) => {
   return elementList[elementIndex];
 };
 
+const updateBudget = (id, cost, queryArguments, elementList) => {
+  const elementIndex = getIndexById(id, elementList);
+  if (elementIndex === -1) {
+    throw new Error("updateElement must be called with a valid id parameter");
+  }
+  if (queryArguments.id) {
+    queryArguments.id = Number(queryArguments.id);
+  }
+  //Object.assign(elementList[elementIndex], queryArguments);
+  if (balanceCheck(elementList[elementIndex].budget, cost)) {
+    elementList[elementIndex].budget -= cost;
+  } else {
+    return false;
+  }
+
+  return elementList[elementIndex];
+};
+
+const balanceCheck = (balance, cost) => (balance - cost < 0 ? false : true);
+
 //Sever routes
 app.use("/envelopes/:id", (req, res, next) => {
   const foundId = envelopes.filter(
@@ -88,12 +108,49 @@ app.post("/envelopes", (req, res, next) => {
   }
 });
 
-app.put("/envelopes/:id", (req, res, next) => {
+app.post("/transfer/:amount/:from/:to", (req, res, next) => {
+  const fromIndex = getIndexById(req.params.from, envelopes);
+  console.log(fromIndex);
+  const toIndex = getIndexById(req.params.to, envelopes);
+  console.log(toIndex);
+  const amount = Number(req.params.amount);
+  console.log(amount);
+
+  if (fromIndex !== -1 && toIndex !== -1) {
+    if (balanceCheck(envelopes[fromIndex].budget, amount)) {
+      envelopes[fromIndex].budget -= amount;
+      envelopes[toIndex].budget += amount;
+      res.send([envelopes[fromIndex], envelopes[toIndex]]);
+    } else {
+      res.status(400).send("Broke MOTHERFUCKER!!");
+    }
+  } else {
+    res.status(404).send();
+  }
+});
+
+app.put("/envelopes/:id/", (req, res, next) => {
   const index = getIndexById(req.params.id, envelopes);
 
   if (index !== -1) {
     updateElement(req.params.id, req.query, envelopes);
     res.send(envelopes[index]);
+  } else {
+    res.status(404).send();
+  }
+});
+
+app.put("/envelopes/:id/:cost", (req, res, next) => {
+  const index = getIndexById(req.params.id, envelopes);
+
+  if (index !== -1) {
+    //updateElement(req.params.id, req.query, envelopes);
+    updateBudget(req.params.id, req.params.cost, req.query, envelopes);
+    if (updateBudget(req.params.id, req.params.cost, req.query, envelopes)) {
+      res.send(envelopes[index]);
+    } else {
+      res.status(400).send("Broke MOTHERFUCKER!!");
+    }
   } else {
     res.status(404).send();
   }
